@@ -1,7 +1,13 @@
 package com.example.separate.service.impl;
 
+import cn.dev33.satoken.secure.SaBase64Util;
+import cn.dev33.satoken.secure.SaSecureUtil;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.crypto.SecureUtil;
+import cn.hutool.crypto.symmetric.AES;
+import cn.hutool.crypto.symmetric.SymmetricAlgorithm;
+import cn.hutool.crypto.symmetric.SymmetricCrypto;
 import cn.hutool.poi.excel.ExcelReader;
 import cn.hutool.poi.excel.ExcelUtil;
 import cn.hutool.poi.excel.ExcelWriter;
@@ -93,7 +99,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 //        IPage<User> page = new Page<>(pageNum,pageSize);
 //        IPage<User> userPage = page(page, queryWrapper);
 
-         return userMapper.findPage(page,username,email,address);
+        IPage<User> page1 = userMapper.findPage(page, username, email, address);
+        return page1;
+
 
     }
 
@@ -207,7 +215,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
     }
-
+    // 定义密钥
+    String key = "password";
     @Override
     public User register(UserDto userDto) {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -221,6 +230,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (user != null){
             throw new ServiceException(Constants.CODE_400,"用户名已存在"); //用户名已存在
         }else {
+
+            // 定义明文
+            String text = userDto.getPassword();
+            // 加密
+            String ciphertext = SaSecureUtil.aesEncrypt(key,text);
+            System.out.println("AES加密后：" + ciphertext);
+            userDto.setPassword(ciphertext);
+
+            /*String text = userDto.getPassword();
+            // 使用Base64编码
+            String base64Text = SaBase64Util.encode(text);
+            System.out.println("Base64编码后：" + base64Text);
+            userDto.setPassword(base64Text);*/
+
             user = new User();
             BeanUtil.copyProperties(userDto,user,true);
             userMapper.insert(user);
@@ -236,10 +259,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     public User getUserInfo(UserDto userDto){
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("username",userDto.getUsername());
-        queryWrapper.eq("password",userDto.getPassword());
+//        queryWrapper.eq("password",userDto.getPassword());
         User user;
         try{
             user = userMapper.selectOne(queryWrapper);
+            String DBpassword = user.getPassword();
+            // 解密
+            String password = SaSecureUtil.aesDecrypt(key, DBpassword);
+            System.out.println("AES解密后：" + password);
+            if (userDto.getPassword().equals(password)){
+                return user;
+            }
         }catch (Exception e){
             log.error("{}",e.getMessage());
             throw new ServiceException(Constants.CODE_500,"系统错误");

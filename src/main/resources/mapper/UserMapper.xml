@@ -37,14 +37,19 @@
         left join sys_course tc
         on  sys_user.id = tc.teacher_id
 
-
         <where>
-            <if test="username != null and username != ''"></if>
+            <if test="username != null and username != ''">
                 and username like concat('%',#{username},'%')
-            <if test="email != null and email != ''"></if>
+            </if>
+
+            <if test="email != null and email != ''">
                 and email like concat('%',#{email},'%')
-            <if test="address != null and address != ''"></if>
+            </if>
+
+            <if test="address != null and address != ''">
                 and address like concat('%',#{address},'%')
+            </if>
+
         </where>
     </select>
 </mapper>
